@@ -70,6 +70,28 @@ body {
     border-bottom-color: var(--tab-active);
 }
 
+.data-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+}
+
+.data-btn {
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.data-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
 .page {
     display: none;
     flex: 1;
