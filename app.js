@@ -204,48 +204,6 @@ class ThoughtNotes {
         document.getElementById('addNewPodcastBtn').addEventListener('click', () => this.showModal('addPodcastModal'));
         document.getElementById('backToListBtn').addEventListener('click', () => this.goBackToList());
         document.getElementById('addNewNoteBtn').addEventListener('click', () => this.addNewNote());
-        document.getElementById('exportBtn').addEventListener('click', () => this.exportData());
-        document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
-        document.getElementById('importFile').addEventListener('change', (e) => this.importData(e));
-    }
-
-    exportData() {
-        const data = {
-            thoughtNotes: JSON.parse(localStorage.getItem('thoughtNotes') || '{"books":[],"podcasts":[]}'),
-            speechLang: localStorage.getItem('speechLang') || 'zh-CN',
-            exportDate: new Date().toISOString()
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `notes-backup-${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
-    importData(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = JSON.parse(e.target.result);
-                if (!confirm('导入数据将覆盖当前所有笔记，确定继续吗？')) return;
-
-                if (data.thoughtNotes) localStorage.setItem('thoughtNotes', JSON.stringify(data.thoughtNotes));
-                if (data.speechLang) localStorage.setItem('speechLang', data.speechLang);
-
-                this.loadData();
-                this.renderCurrentTab();
-                alert('数据导入成功！');
-            } catch (err) {
-                alert('导入失败：文件格式错误');
-            }
-        };
-        reader.readAsText(file);
-        event.target.value = '';
     }
 
     switchTab(tab) {
