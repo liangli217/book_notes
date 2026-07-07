@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>数据恢复</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .box { padding: 20px; border-radius: 8px; margin: 10px 0; }
+        .info { background: #e0f2fe; color: #075985; }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; border-radius: 6px; border: none; }
+        .btn-primary { background: #6366f1; color: white; }
+        pre { background: #f3f4f6; padding: 10px; border-radius: 6px; overflow-x: auto; max-height: 300px; }
+    </style>
+</head>
+<body>
+    <h1>数据恢复工具</h1>
+    <div id="status" class="box info">正在检查 localStorage...</div>
+    <div id="dataDisplay"></div>
+    <div id="actions" style="display:none;">
+        <button class="btn-primary" onclick="uploadToSupabase()">上传到 Supabase</button>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://gdsvjsgqiptuodxpoghb.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_-Ki3NsqC_sFclgXN2jf3Fg_0V-euAn7';
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let recoveredData = null;
+
+        // Check localStorage for old data
+        const oldData = localStorage.getItem('thoughtNotes') || localStorage.getItem('biographyNotes');
+        
+        if (!oldData) {
+            document.getElementById('status').className = 'box error';
+            document.getElementById('status').textContent = 'localStorage 中没有找到旧数据。现有 keys: ' + Object.keys(localStorage).join(', ');
+        } else {
+            try {
+                const parsed = JSON.parse(oldData);
+                recoveredData = parsed;
+                const books = parsed.books || (Array.isArray(parsed) ? parsed : []);
+                const podcasts = parsed.podcasts || [];
+                
+                document.getElementById('status').className = 'box success';
+                document.getElementById('status').textContent = `找到数据！${books.length} 本书, ${podcasts.length} 个播客/视频`;
+                
+                let html = '<h2>找到的数据：</h2>';
+                html += '<pre>' + JSON.stringify(parsed, null, 2).substring(0, 5000) + '</pre>';
+                document.getElementById('dataDisplay').innerHTML = html;
+                document.getElementById('actions').style.display = 'block';
+            } catch (e) {
+                document.getElementById('status').className = 'box error';
+                document.getElementById('status').textContent = '数据解析失败: ' + e.message;
+                document.getElementById('dataDisplay').innerHTML = '<pre>' + oldData.substring(0, 2000) + '</pre>';
+            }
+        }
+
+        async function uploadToSupabase() {
+            if (!recoveredData) return;
+            
+            const btn = event.target;
+            btn.textContent = '正在上传...';
+            btn.disabled = true;
+            
+            const books = recoveredData.books || (Array.isArray(recoveredData) ? recoveredData : []);
+            const podcasts = recoveredData.podcasts || [];
+            let migrated = 0;
+            let errors = '';
+
+            try {
+                for (const book of books) {
+                    const { data, error } = await db.from('items').insert({
+                        type: 'book', title: book.title, author: book.author || '', cover_url: book.cover || ''
+                    }).select().single();
+                    if (error) { errors += book.title + ': ' + error.message + '; '; continue; }
+
+                    for (const note of (book.notes || [])) {
+                        await db.from('notes').insert({
+                            item_id: data.id,
+                            quote: note.quote || '',
+                            reflection: note.reflection || '',
+                            timestamp: note.timestamp || ''
+                        });
+                    }
+                    migrated++;
+                }
+
+                for (const pod of podcasts) {
+                    const { data, error } = await db.from('items').insert({
+                        type: pod.type || 'podcast', title: pod.title, author: pod.creator || '', cover_url: pod.cover || '', url: pod.url || ''
+                    }).select().single();
+                    if (error) { errors += pod.title + ': ' + error.message + '; '; continue; }
+
+                    for (const note of (pod.notes || [])) {
+                        await db.from('notes').insert({
+                            item_id: data.id,
+                            quote: note.quote || '',
+                            reflection: note.reflection || '',
+                            timestamp: note.timestamp || ''
+                        });
+                    }
+                    migrated++;
+                }
+
+                document.getElementById('status').className = 'box success';
+                document.getElementById('status').textContent = `上传成功！共迁移 ${migrated} 条记录。${errors ? '部分错误: ' + errors : ''}`;
+                btn.style.display = 'none';
+            } catch (e) {
+                document.getElementById('status').className = 'box error';
+                document.getElementById('status').textContent = '上传失败: ' + e.message;
+                btn.disabled = false;
+                btn.textContent = '重试';
+            }
+        }
+    </script>
+</body>
+</html>
