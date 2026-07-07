@@ -604,4 +604,4 @@ class ThoughtNotes {
     }
 }
 
-const app = new ThoughtNotes();
+window.app = new ThoughtNotes();
