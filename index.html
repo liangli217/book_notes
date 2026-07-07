@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>思想笔记</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部标签页导航 -->
+        <nav class="tabs-nav">
+            <button class="tab-btn active" data-tab="books">📚 书籍</button>
+            <button class="tab-btn" data-tab="podcasts">🎬 视频/播客</button>
+        </nav>
+
+        <!-- 页面1：书籍列表页 -->
+        <div id="booksPage" class="page active" data-page="books">
+            <header>
+                <h1>我的书架</h1>
+                <button id="addNewBookBtn" class="btn-primary">+ 添加新书</button>
+            </header>
+            <div class="content-grid" id="booksGrid">
+            </div>
+        </div>
+
+        <!-- 页面2：视频/播客列表页 -->
+        <div id="podcastsPage" class="page" data-page="podcasts">
+            <header>
+                <h1>视频与播客</h1>
+                <button id="addNewPodcastBtn" class="btn-primary">+ 添加视频/播客</button>
+            </header>
+            <div class="content-grid" id="podcastsGrid">
+            </div>
+        </div>
+
+        <!-- 页面3：笔记编辑页（通用） -->
+        <div id="notesPage" class="page">
+            <header>
+                <button id="backToListBtn" class="btn-secondary">← 返回</button>
+                <div class="current-item-info">
+                    <span id="currentItemTitle"></span>
+                    <span id="currentItemMeta" class="author"></span>
+                </div>
+                <div class="lang-switcher">
+                    <span class="lang-label">语音</span>
+                    <button class="lang-btn" id="langZhBtn" onclick="app.setSpeechLang('zh-CN')">中</button>
+                    <button class="lang-btn" id="langEnBtn" onclick="app.setSpeechLang('en-US')">EN</button>
+                </div>
+                <button id="addNewNoteBtn" class="btn-primary">+ 添加笔记</button>
+            </header>
+
+            <div class="notes-container">
+                <div class="notes-column">
+                    <div class="column-header">
+                        <h2>我的笔记</h2>
+                    </div>
+                    <div class="notes-list" id="notesList">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加书籍弹窗 -->
+    <div id="addBookModal" class="modal">
+        <div class="modal-content">
+            <h3>添加新书</h3>
+            <input type="text" id="newBookTitle" placeholder="书名" class="input-text">
+            <input type="text" id="newBookAuthor" placeholder="作者" class="input-text">
+            <input type="text" id="newBookCover" placeholder="封面图片URL（可选）" class="input-text">
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="app.closeModal('addBookModal')">取消</button>
+                <button class="save-btn" onclick="app.addBook()">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加视频/播客弹窗 -->
+    <div id="addPodcastModal" class="modal">
+        <div class="modal-content">
+            <h3>添加视频/播客</h3>
+            <select id="newPodcastType" class="input-text">
+                <option value="video">视频</option>
+                <option value="podcast">播客</option>
+            </select>
+            <input type="text" id="newPodcastTitle" placeholder="标题" class="input-text">
+            <input type="text" id="newPodcastCreator" placeholder="创作者/主播" class="input-text">
+            <input type="text" id="newPodcastUrl" placeholder="链接URL（可选）" class="input-text">
+            <input type="text" id="newPodcastCover" placeholder="封面图片URL（可选）" class="input-text">
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="app.closeModal('addPodcastModal')">取消</button>
+                <button class="save-btn" onclick="app.addPodcast()">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
