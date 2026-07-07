@@ -18,8 +18,65 @@ class ThoughtNotes {
     async init() {
         this.bindEvents();
         this.initSpeechRecognition();
+        await this.migrateOldLocalData();
         await this.loadData();
         this.renderCurrentTab();
+    }
+
+    // 自动迁移旧的 localStorage 数据到 Supabase
+    async migrateOldLocalData() {
+        const oldData = localStorage.getItem('thoughtNotes') || localStorage.getItem('biographyNotes');
+        if (!oldData) return;
+
+        try {
+            const parsed = JSON.parse(oldData);
+            const books = parsed.books || (Array.isArray(parsed) ? parsed : []);
+            const podcasts = parsed.podcasts || [];
+
+            let migrated = 0;
+
+            for (const book of books) {
+                const { data, error } = await db.from('items').insert({
+                    type: 'book', title: book.title, author: book.author || '', cover_url: book.cover || ''
+                }).select().single();
+                if (error) { console.error('迁移书籍失败:', error); continue; }
+
+                for (const note of (book.notes || [])) {
+                    await db.from('notes').insert({
+                        item_id: data.id,
+                        quote: note.quote || '',
+                        reflection: note.reflection || '',
+                        timestamp: note.timestamp || ''
+                    });
+                }
+                migrated++;
+            }
+
+            for (const pod of podcasts) {
+                const { data, error } = await db.from('items').insert({
+                    type: pod.type || 'podcast', title: pod.title, author: pod.creator || '', cover_url: pod.cover || '', url: pod.url || ''
+                }).select().single();
+                if (error) { console.error('迁移播客失败:', error); continue; }
+
+                for (const note of (pod.notes || [])) {
+                    await db.from('notes').insert({
+                        item_id: data.id,
+                        quote: note.quote || '',
+                        reflection: note.reflection || '',
+                        timestamp: note.timestamp || ''
+                    });
+                }
+                migrated++;
+            }
+
+            if (migrated > 0) {
+                localStorage.removeItem('thoughtNotes');
+                localStorage.removeItem('biographyNotes');
+                alert(`数据迁移完成！共迁移 ${migrated} 条记录。`);
+            }
+        } catch (e) {
+            console.error('迁移失败:', e);
+        }
     }
 
     initSpeechRecognition() {
