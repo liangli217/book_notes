@@ -211,8 +211,7 @@ class ThoughtNotes {
 
     exportData() {
         const data = {
-            books: JSON.parse(localStorage.getItem('books') || '[]'),
-            podcasts: JSON.parse(localStorage.getItem('podcasts') || '[]'),
+            thoughtNotes: JSON.parse(localStorage.getItem('thoughtNotes') || '{"books":[],"podcasts":[]}'),
             speechLang: localStorage.getItem('speechLang') || 'zh-CN',
             exportDate: new Date().toISOString()
         };
@@ -235,8 +234,7 @@ class ThoughtNotes {
                 const data = JSON.parse(e.target.result);
                 if (!confirm('导入数据将覆盖当前所有笔记，确定继续吗？')) return;
 
-                if (data.books) localStorage.setItem('books', JSON.stringify(data.books));
-                if (data.podcasts) localStorage.setItem('podcasts', JSON.stringify(data.podcasts));
+                if (data.thoughtNotes) localStorage.setItem('thoughtNotes', JSON.stringify(data.thoughtNotes));
                 if (data.speechLang) localStorage.setItem('speechLang', data.speechLang);
 
                 this.loadData();
