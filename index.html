@@ -14,6 +14,11 @@
             <button class="tab-btn" data-tab="podcasts">🎬 视频/播客</button>
         </nav>
 
+        <!-- 搜索栏 -->
+        <div class="search-bar" id="searchBar">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 搜索标题或标签...">
+        </div>
+
         <!-- 页面1：书籍列表页 -->
         <div id="booksPage" class="page active" data-page="books">
             <header>
@@ -69,6 +74,7 @@
             <input type="text" id="newBookTitle" placeholder="书名" class="input-text">
             <input type="text" id="newBookAuthor" placeholder="作者" class="input-text">
             <input type="text" id="newBookCover" placeholder="封面图片URL（可选）" class="input-text">
+            <input type="text" id="newBookTags" placeholder="标签，用逗号分隔（如：哲学, 成长）" class="input-text">
             <div class="modal-actions">
                 <button class="cancel-btn" onclick="app.closeModal('addBookModal')">取消</button>
                 <button class="save-btn" onclick="app.addBook()">添加</button>
@@ -88,6 +94,7 @@
             <input type="text" id="newPodcastCreator" placeholder="创作者/主播" class="input-text">
             <input type="text" id="newPodcastUrl" placeholder="链接URL（可选）" class="input-text">
             <input type="text" id="newPodcastCover" placeholder="封面图片URL（可选）" class="input-text">
+            <input type="text" id="newPodcastTags" placeholder="标签，用逗号分隔（如：科技, 访谈）" class="input-text">
             <div class="modal-actions">
                 <button class="cancel-btn" onclick="app.closeModal('addPodcastModal')">取消</button>
                 <button class="save-btn" onclick="app.addPodcast()">添加</button>
