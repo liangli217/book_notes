@@ -12,7 +12,6 @@ class ThoughtNotes {
         this.isListening = false;
         this.currentListeningTarget = null;
         this.updateTimers = {};
-        this.searchQuery = '';
         this.init();
     }
 
@@ -205,10 +204,6 @@ class ThoughtNotes {
         document.getElementById('addNewPodcastBtn').addEventListener('click', () => this.showModal('addPodcastModal'));
         document.getElementById('backToListBtn').addEventListener('click', () => this.goBackToList());
         document.getElementById('addNewNoteBtn').addEventListener('click', () => this.addNewNote());
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            this.searchQuery = e.target.value;
-            this.renderCurrentTab();
-        });
     }
 
     switchTab(tab) {
@@ -226,17 +221,6 @@ class ThoughtNotes {
     parseTags(item) {
         const tags = item.tags || '';
         return tags.split(',').map(t => t.trim()).filter(t => t);
-    }
-
-    getFilteredItems(type) {
-        const items = this.data[type];
-        const query = this.searchQuery.trim().toLowerCase();
-        if (!query) return items;
-        return items.filter(item => {
-            const titleMatch = (item.title || '').toLowerCase().includes(query);
-            const tagsMatch = (item.tags || '').toLowerCase().includes(query);
-            return titleMatch || tagsMatch;
-        });
     }
 
     showModal(modalId) {
@@ -323,7 +307,6 @@ class ThoughtNotes {
             page.classList.toggle('active', page.dataset.page === this.currentTab);
         });
         document.getElementById('notesPage').classList.remove('active');
-        document.getElementById('searchBar').classList.remove('hidden');
         this.currentItem = null;
         this.currentType = null;
         this.renderCurrentTab();
@@ -335,7 +318,6 @@ class ThoughtNotes {
         this.currentType = type;
         document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
         document.getElementById('notesPage').classList.add('active');
-        document.getElementById('searchBar').classList.add('hidden');
         this.renderNotesPage();
     }
 
@@ -345,12 +327,7 @@ class ThoughtNotes {
             grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;color:#868e96;margin-top:60px;"><p style="font-size:18px;margin-bottom:10px;">书架空空如也</p><p style="font-size:14px;">点击上方"添加新书"开始你的阅读之旅</p></div>`;
             return;
         }
-        const filtered = this.getFilteredItems('books');
-        if (filtered.length === 0) {
-            grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;color:#868e96;margin-top:60px;"><p style="font-size:18px;margin-bottom:10px;">未找到匹配的书籍</p><p style="font-size:14px;">试试其他关键词或清空搜索</p></div>`;
-            return;
-        }
-        grid.innerHTML = filtered.map(book => this.renderItemCard('books', book)).join('');
+        grid.innerHTML = this.data.books.map(book => this.renderItemCard('books', book)).join('');
     }
 
     renderPodcastsPage() {
@@ -359,12 +336,7 @@ class ThoughtNotes {
             grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;color:#868e96;margin-top:60px;"><p style="font-size:18px;margin-bottom:10px;">暂无视频或播客</p><p style="font-size:14px;">点击上方"添加视频/播客"开始记录</p></div>`;
             return;
         }
-        const filtered = this.getFilteredItems('podcasts');
-        if (filtered.length === 0) {
-            grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;color:#868e96;margin-top:60px;"><p style="font-size:18px;margin-bottom:10px;">未找到匹配的视频/播客</p><p style="font-size:14px;">试试其他关键词或清空搜索</p></div>`;
-            return;
-        }
-        grid.innerHTML = filtered.map(podcast => this.renderItemCard('podcasts', podcast)).join('');
+        grid.innerHTML = this.data.podcasts.map(podcast => this.renderItemCard('podcasts', podcast)).join('');
     }
 
     renderItemCard(type, item) {
