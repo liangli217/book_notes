@@ -190,7 +190,6 @@ class ThoughtNotes {
             creator: row.author || '',
             url: row.url || '',
             cover: row.cover_url || '',
-            tags: row.tags || '',
             createdAt: row.created_at,
             notes: []
         };
@@ -218,11 +217,6 @@ class ThoughtNotes {
         else if (this.currentTab === 'podcasts') this.renderPodcastsPage();
     }
 
-    parseTags(item) {
-        const tags = item.tags || '';
-        return tags.split(',').map(t => t.trim()).filter(t => t);
-    }
-
     showModal(modalId) {
         const modal = document.getElementById(modalId);
         modal.querySelectorAll('input').forEach(input => input.value = '');
@@ -240,12 +234,11 @@ class ThoughtNotes {
         const title = document.getElementById('newBookTitle').value.trim();
         const author = document.getElementById('newBookAuthor').value.trim();
         const cover = document.getElementById('newBookCover').value.trim();
-        const tags = document.getElementById('newBookTags').value.trim();
         if (!title) { alert('请输入书名'); return; }
 
         try {
             const { data, error } = await db.from('items').insert({
-                type: 'book', title, author, cover_url: cover, tags
+                type: 'book', title, author, cover_url: cover
             }).select().single();
             if (error) throw error;
 
@@ -266,12 +259,11 @@ class ThoughtNotes {
         const creator = document.getElementById('newPodcastCreator').value.trim();
         const url = document.getElementById('newPodcastUrl').value.trim();
         const cover = document.getElementById('newPodcastCover').value.trim();
-        const tags = document.getElementById('newPodcastTags').value.trim();
         if (!title) { alert('请输入标题'); return; }
 
         try {
             const { data, error } = await db.from('items').insert({
-                type, title, author: creator, cover_url: cover, url, tags
+                type, title, author: creator, cover_url: cover, url
             }).select().single();
             if (error) throw error;
 
@@ -356,7 +348,6 @@ class ThoughtNotes {
                         <div class="item-title">${item.title}</div>
                         <div class="item-meta">${metaLabel || '未知'}</div>
                         ${typeLabel ? `<div class="item-type-badge">${typeLabel}</div>` : ''}
-                        ${this.parseTags(item).length > 0 ? `<div class="item-tags">${this.parseTags(item).map(tag => `<span class="item-tag">${this.escapeHtml(tag)}</span>`).join('')}</div>` : ''}
                     </div>
                     <div class="item-stats">${item.notes.length} 条</div>
                 </div>
@@ -509,10 +500,6 @@ class ThoughtNotes {
         const text = div.textContent || div.innerText || '';
         const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         return escaped.length > maxLen ? escaped.substring(0, maxLen) + '...' : escaped;
-    }
-
-    escapeHtml(text) {
-        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     async deleteNote(noteId) {

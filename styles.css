@@ -307,23 +307,6 @@ select.input-text {
     color: var(--text-secondary);
 }
 
-.item-card .item-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
-}
-
-.item-card .item-tag {
-    display: inline-block;
-    padding: 2px 10px;
-    background: #eef2ff;
-    color: #4f46e5;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 500;
-}
-
 .item-card .item-stats {
     font-size: 12px;
     color: var(--text-muted);
