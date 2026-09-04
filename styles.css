@@ -518,6 +518,22 @@ select.input-text {
     gap: 24px;
 }
 
+.note-card .diary-content {
+    flex-direction: column;
+}
+
+.note-card .diary-text {
+    min-height: 300px;
+}
+
+.item-card .diary-placeholder {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+}
+
+.item-card .diary-placeholder span {
+    font-size: 28px;
+}
+
 .note-card .note-column {
     flex: 1;
     min-width: 0;

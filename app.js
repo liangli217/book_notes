@@ -4,7 +4,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 class ThoughtNotes {
     constructor() {
-        this.data = { books: [], podcasts: [] };
+        this.data = { books: [], podcasts: [], diaries: [] };
         this.currentItem = null;
         this.currentType = null;
         this.currentTab = 'books';
@@ -163,7 +163,8 @@ class ThoughtNotes {
 
             this.data = {
                 books: [],
-                podcasts: []
+                podcasts: [],
+                diaries: []
             };
 
             items.forEach(item => {
@@ -171,6 +172,8 @@ class ThoughtNotes {
                 mapped.notes = notesByItem[item.id] || [];
                 if (item.type === 'book') {
                     this.data.books.push(mapped);
+                } else if (item.type === 'diary') {
+                    this.data.diaries.push(mapped);
                 } else {
                     this.data.podcasts.push(mapped);
                 }
@@ -201,6 +204,7 @@ class ThoughtNotes {
         });
         document.getElementById('addNewBookBtn').addEventListener('click', () => this.showModal('addBookModal'));
         document.getElementById('addNewPodcastBtn').addEventListener('click', () => this.showModal('addPodcastModal'));
+        document.getElementById('addNewDiaryBtn').addEventListener('click', () => this.showModal('addDiaryModal'));
         document.getElementById('backToListBtn').addEventListener('click', () => this.goBackToList());
         document.getElementById('addNewNoteBtn').addEventListener('click', () => this.addNewNote());
     }
@@ -215,6 +219,7 @@ class ThoughtNotes {
     renderCurrentTab() {
         if (this.currentTab === 'books') this.renderBooksPage();
         else if (this.currentTab === 'podcasts') this.renderPodcastsPage();
+        else if (this.currentTab === 'diaries') this.renderDiariesPage();
     }
 
     showModal(modalId) {
@@ -278,8 +283,29 @@ class ThoughtNotes {
         }
     }
 
+    async addDiary() {
+        const title = document.getElementById('newDiaryTitle').value.trim();
+        const dateStr = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+        try {
+            const { data, error } = await db.from('items').insert({
+                type: 'diary', title: title || dateStr
+            }).select().single();
+            if (error) throw error;
+
+            const newDiary = this.mapItem(data);
+            newDiary.notes = [];
+            this.data.diaries.unshift(newDiary);
+            this.closeModal('addDiaryModal');
+            this.renderDiariesPage();
+        } catch (e) {
+            console.error('添加日记失败:', e);
+            alert('添加失败: ' + e.message);
+        }
+    }
+
     async deleteItem(type, itemId) {
-        const typeLabel = type === 'books' ? '这本书' : '这个视频/播客';
+        const labels = { books: '这本书', podcasts: '这个视频/播客', diaries: '这篇日记' };
+        const typeLabel = labels[type] || '这项内容';
         if (!confirm(`确定要删除${typeLabel}及其所有笔记吗？`)) return;
 
         try {
@@ -305,7 +331,7 @@ class ThoughtNotes {
     }
 
     goToNotesPage(type, itemId) {
-        const items = type === 'books' ? this.data.books : this.data.podcasts;
+        const items = this.data[type];
         this.currentItem = items.find(item => item.id === itemId);
         this.currentType = type;
         document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
@@ -331,39 +357,52 @@ class ThoughtNotes {
         grid.innerHTML = this.data.podcasts.map(podcast => this.renderItemCard('podcasts', podcast)).join('');
     }
 
+    renderDiariesPage() {
+        const grid = document.getElementById('diariesGrid');
+        if (this.data.diaries.length === 0) {
+            grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;color:#868e96;margin-top:60px;"><p style="font-size:18px;margin-bottom:10px;">暂无日记</p><p style="font-size:14px;">点击上方"写日记"开始记录</p></div>`;
+            return;
+        }
+        grid.innerHTML = this.data.diaries.map(diary => this.renderItemCard('diaries', diary)).join('');
+    }
+
     renderItemCard(type, item) {
-        const metaLabel = item.type === 'book' ? item.author : item.creator;
-        const typeLabel = item.type === 'book' ? '' : (item.type === 'video' ? '🎬 视频' : '🎧 播客');
-        return `
-            <div class="item-card ${item.type}">
-                <div class="item-header">
-                    ${item.cover ? `
+        const isDiary = item.type === 'diary';
+        const metaLabel = isDiary ? new Date(item.createdAt).toLocaleDateString('zh-CN') : (item.type === 'book' ? item.author : item.creator);
+        const typeLabel = item.type === 'book' ? '' : isDiary ? '📔 日记' : (item.type === 'video' ? '🎬 视频' : '🎧 播客');
+        const coverHtml = isDiary ? `
+                    <div class="item-cover-placeholder diary-placeholder"><span>📔</span></div>
+                    ` : (item.cover ? `
                     <div class="item-cover-wrapper">
                         <img src="${item.cover}" alt="${item.title}" class="item-cover" onerror="this.onerror=null;this.style.display='none';this.parentElement.innerHTML='<div class=\\'item-cover-placeholder\\'><span>${item.title.charAt(0)}</span></div>'">
                     </div>
                     ` : `
                     <div class="item-cover-placeholder"><span>${item.title.charAt(0)}</span></div>
-                    `}
+                    `);
+        return `
+            <div class="item-card ${item.type}">
+                <div class="item-header">
+                    ${coverHtml}
                     <div class="item-info">
                         <div class="item-title">${item.title}</div>
                         <div class="item-meta">${metaLabel || '未知'}</div>
                         ${typeLabel ? `<div class="item-type-badge">${typeLabel}</div>` : ''}
                     </div>
-                    <div class="item-stats">${item.notes.length} 条</div>
+                    <div class="item-stats">${isDiary ? '' : item.notes.length + ' 条'}</div>
                 </div>
                 ${item.url ? `<div class="item-url"><a href="${item.url}" target="_blank" rel="noopener noreferrer">🔗 打开链接</a></div>` : ''}
                 <div class="item-notes">
-                    ${item.notes.length === 0 ? `<div class="no-notes">暂无笔记</div>` : item.notes.slice(0, 3).map(note => `
+                    ${item.notes.length === 0 ? `<div class="no-notes">${isDiary ? '暂无内容' : '暂无笔记'}</div>` : item.notes.slice(0, 3).map(note => `
                         <div class="note-item">
                             ${note.timestamp ? `<div class="note-timestamp">⏱️ ${note.timestamp}</div>` : ''}
-                            <div class="note-quote">${this.getPreviewText(note.quote, 50)}</div>
-                            ${note.reflection ? `<div class="note-reflection">${this.getPreviewText(note.reflection, 40)}</div>` : ''}
+                            ${isDiary ? `<div class="note-reflection">${this.getPreviewText(note.reflection, 80)}</div>` : `<div class="note-quote">${this.getPreviewText(note.quote, 50)}</div>
+                            ${note.reflection ? `<div class="note-reflection">${this.getPreviewText(note.reflection, 40)}</div>` : ''}`}
                         </div>
                     `).join('')}
                     ${item.notes.length > 3 ? `<div class="more-notes">还有 ${item.notes.length - 3} 条笔记...</div>` : ''}
                 </div>
                 <div class="item-actions">
-                    <button class="action-btn read-btn" onclick="app.goToNotesPage('${type}', ${item.id})">查看全部</button>
+                    <button class="action-btn read-btn" onclick="app.goToNotesPage('${type}', ${item.id})">${isDiary ? '打开' : '查看全部'}</button>
                     <button class="action-btn delete-btn" onclick="app.deleteItem('${type}', ${item.id})">删除</button>
                 </div>
             </div>
@@ -371,10 +410,16 @@ class ThoughtNotes {
     }
 
     renderNotesPage() {
-        const metaField = this.currentItem.type === 'book' ? 'author' : 'creator';
+        const isDiary = this.currentItem.type === 'diary';
+        const metaField = isDiary ? null : (this.currentItem.type === 'book' ? 'author' : 'creator');
         document.getElementById('currentItemTitle').textContent = this.currentItem.title;
-        document.getElementById('currentItemMeta').textContent = this.currentItem[metaField] ? `· ${this.currentItem[metaField]}` : '';
+        if (isDiary) {
+            document.getElementById('currentItemMeta').textContent = `· ${new Date(this.currentItem.createdAt).toLocaleDateString('zh-CN')}`;
+        } else {
+            document.getElementById('currentItemMeta').textContent = this.currentItem[metaField] ? `· ${this.currentItem[metaField]}` : '';
+        }
         this.updateLangButtons();
+        document.getElementById('addNewNoteBtn').textContent = isDiary ? '+ 添加内容' : '+ 添加笔记';
         this.renderNotes();
     }
 
@@ -442,9 +487,10 @@ class ThoughtNotes {
     renderNotes() {
         const notesList = document.getElementById('notesList');
         const isPodcast = this.currentType === 'podcasts';
+        const isDiary = this.currentType === 'diaries';
 
         if (!this.currentItem || this.currentItem.notes.length === 0) {
-            notesList.innerHTML = `<div class="empty-state"><p>暂无笔记</p><p class="hint">点击上方"+ 添加笔记"开始记录</p></div>`;
+            notesList.innerHTML = `<div class="empty-state"><p>${isDiary ? '暂无内容' : '暂无笔记'}</p><p class="hint">点击上方"+ 添加${isDiary ? '内容' : '笔记'}"开始记录</p></div>`;
             return;
         }
 
@@ -456,6 +502,20 @@ class ThoughtNotes {
                     <input type="text" id="timestamp-${note.id}" class="timestamp-input" value="${note.timestamp || ''}" placeholder="如 12:34 或 1h23m45s" oninput="app.updateTimestamp(${note.id}, this.value)">
                 </div>
                 ` : ''}
+                ${isDiary ? `
+                <div class="note-content diary-content">
+                    <div class="note-column">
+                        <div class="note-column-header">
+                            <div class="note-column-title">日记内容</div>
+                            <div class="column-actions">
+                                <button class="format-btn" onmousedown="event.preventDefault()" onclick="app.formatBold('reflection-${note.id}')" title="加粗"><b>B</b></button>
+                                <button class="voice-btn" onclick="app.toggleListening('reflection-${note.id}', this)">🎤 语音</button>
+                            </div>
+                        </div>
+                        <div id="reflection-${note.id}" class="note-text reflection-text diary-text" contenteditable="true" data-placeholder="写下你的日记..." oninput="app.updateReflection(${note.id}, this.innerHTML)">${note.reflection || ''}</div>
+                    </div>
+                </div>
+                ` : `
                 <div class="note-content">
                     <div class="note-column">
                         <div class="note-column-header">
@@ -478,8 +538,9 @@ class ThoughtNotes {
                         <div id="reflection-${note.id}" class="note-text reflection-text" contenteditable="true" data-placeholder="写下你的感悟..." oninput="app.updateReflection(${note.id}, this.innerHTML)">${note.reflection || ''}</div>
                     </div>
                 </div>
+                `}
                 <div class="note-footer">
-                    <button class="delete-btn" onclick="app.deleteNote(${note.id})">删除笔记</button>
+                    <button class="delete-btn" onclick="app.deleteNote(${note.id})">删除${isDiary ? '内容' : '笔记'}</button>
                 </div>
             </div>
         `).join('');

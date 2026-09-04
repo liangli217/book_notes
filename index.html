@@ -12,6 +12,7 @@
         <nav class="tabs-nav">
             <button class="tab-btn active" data-tab="books">📚 书籍</button>
             <button class="tab-btn" data-tab="podcasts">🎬 视频/播客</button>
+            <button class="tab-btn" data-tab="diaries">📔 日记</button>
         </nav>
 
         <!-- 页面1：书籍列表页 -->
@@ -34,7 +35,17 @@
             </div>
         </div>
 
-        <!-- 页面3：笔记编辑页（通用） -->
+        <!-- 页面3：日记列表页 -->
+        <div id="diariesPage" class="page" data-page="diaries">
+            <header>
+                <h1>我的日记</h1>
+                <button id="addNewDiaryBtn" class="btn-primary">+ 写日记</button>
+            </header>
+            <div class="content-grid" id="diariesGrid">
+            </div>
+        </div>
+
+        <!-- 页面4：笔记编辑页（通用） -->
         <div id="notesPage" class="page">
             <header>
                 <button id="backToListBtn" class="btn-secondary">← 返回</button>
@@ -91,6 +102,18 @@
             <div class="modal-actions">
                 <button class="cancel-btn" onclick="app.closeModal('addPodcastModal')">取消</button>
                 <button class="save-btn" onclick="app.addPodcast()">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加日记弹窗 -->
+    <div id="addDiaryModal" class="modal">
+        <div class="modal-content">
+            <h3>写日记</h3>
+            <input type="text" id="newDiaryTitle" placeholder="标题（可选，如：今天的感悟）" class="input-text">
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="app.closeModal('addDiaryModal')">取消</button>
+                <button class="save-btn" onclick="app.addDiary()">添加</button>
             </div>
         </div>
     </div>
