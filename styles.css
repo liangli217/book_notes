@@ -445,6 +445,17 @@ select.input-text {
     color: white;
 }
 
+.item-card .action-btn.edit-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid #dee2e6;
+}
+
+.item-card .action-btn.edit-btn:hover {
+    background: #f1f3f5;
+    border-color: var(--text-secondary);
+}
+
 .notes-container {
     flex: 1;
     overflow-y: auto;

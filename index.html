@@ -121,6 +121,22 @@
         </div>
     </div>
 
+    <!-- 编辑弹窗 -->
+    <div id="editItemModal" class="modal">
+        <div class="modal-content">
+            <h3>编辑</h3>
+            <input type="text" id="editTitle" placeholder="标题" class="input-text">
+            <input type="text" id="editAuthor" placeholder="作者/创作者" class="input-text">
+            <input type="text" id="editCover" placeholder="封面图片URL（可选）" class="input-text">
+            <input type="text" id="editUrl" placeholder="链接URL（可选）" class="input-text">
+            <input type="text" id="editTags" placeholder="标签，用逗号分隔（如：哲学, 成长）" class="input-text">
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="app.closeModal('editItemModal')">取消</button>
+                <button class="save-btn" onclick="app.saveEdit()">保存</button>
+            </div>
+        </div>
+    </div>
+
     <script src="supabase.min.js"></script>
     <script src="app.js"></script>
 </body>

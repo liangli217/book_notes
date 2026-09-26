@@ -386,6 +386,89 @@ class ThoughtNotes {
         }
     }
 
+    editItem(type, itemId) {
+        const item = this.data[type].find(i => i.id === itemId);
+        if (!item) return;
+        this.editingItem = { type, itemId };
+
+        // 先打开弹窗（showModal 会清空输入框），再填充当前值
+        this.showModal('editItemModal');
+
+        document.getElementById('editTitle').value = item.title || '';
+        document.getElementById('editAuthor').value = item.author || '';
+        document.getElementById('editCover').value = item.cover || '';
+        document.getElementById('editUrl').value = item.url || '';
+        document.getElementById('editTags').value = item.tags || '';
+
+        // 日记不需要作者、封面、链接
+        const isDiary = item.type === 'diary';
+        document.getElementById('editAuthor').style.display = isDiary ? 'none' : 'block';
+        document.getElementById('editCover').style.display = isDiary ? 'none' : 'block';
+        document.getElementById('editUrl').style.display = isDiary ? 'none' : 'block';
+    }
+
+    async saveEdit() {
+        const { type, itemId } = this.editingItem;
+        const item = this.data[type].find(i => i.id === itemId);
+        if (!item) return;
+
+        const title = document.getElementById('editTitle').value.trim();
+        const author = document.getElementById('editAuthor').value.trim();
+        const cover = document.getElementById('editCover').value.trim();
+        const url = document.getElementById('editUrl').value.trim();
+        const tags = document.getElementById('editTags').value.trim();
+
+        if (!title) { alert('标题不能为空'); return; }
+
+        const isDiary = item.type === 'diary';
+        const updates = { title, tags };
+        if (!isDiary) {
+            updates.author = author;
+            updates.cover_url = cover;
+            updates.url = url;
+        }
+
+        try {
+            const { data, error } = await this.updateItem(itemId, updates);
+            if (error) throw error;
+
+            // 更新内存数据
+            const target = this.data[type].find(i => i.id === itemId);
+            if (target) {
+                target.title = title;
+                target.tags = tags;
+                if (!isDiary) {
+                    target.author = author;
+                    target.creator = author;
+                    target.cover = cover;
+                    target.url = url;
+                }
+            }
+            this.saveCache();
+            this.closeModal('editItemModal');
+            this.renderCurrentTab();
+        } catch (e) {
+            console.error('保存失败:', e);
+            alert('保存失败: ' + e.message);
+        }
+    }
+
+    // 更新 item：若 tags 列不存在则自动降级重试
+    async updateItem(itemId, updates) {
+        const { data, error } = await db.from('items').update(updates).eq('id', itemId).select().single();
+        if (!error) return { data, error: null };
+        const msg = (error.message || '').toLowerCase();
+        const isTagsMissing = ('tags' in updates) && (
+            (msg.includes('column') && (msg.includes('does not exist') || msg.includes('schema cache') || msg.includes('could not find'))) ||
+            msg.includes("'tags'")
+        );
+        if (isTagsMissing) {
+            const { tags, ...rest } = updates;
+            return db.from('items').update(rest).eq('id', itemId).select().single();
+        }
+        return { data, error };
+    }
+
     goBackToList() {
         document.querySelectorAll('.page[data-page]').forEach(page => {
             page.classList.toggle('active', page.dataset.page === this.currentTab);
@@ -473,6 +556,7 @@ class ThoughtNotes {
                 </div>
                 <div class="item-actions">
                     <button class="action-btn read-btn" onclick="app.goToNotesPage('${type}', ${item.id})">${isDiary ? '打开' : '查看全部'}</button>
+                    <button class="action-btn edit-btn" onclick="app.editItem('${type}', ${item.id})">编辑</button>
                     <button class="action-btn delete-btn" onclick="app.deleteItem('${type}', ${item.id})">删除</button>
                 </div>
             </div>
