@@ -80,6 +80,7 @@
             <input type="text" id="newBookTitle" placeholder="书名" class="input-text">
             <input type="text" id="newBookAuthor" placeholder="作者" class="input-text">
             <input type="text" id="newBookCover" placeholder="封面图片URL（可选）" class="input-text">
+            <input type="text" id="newBookTags" placeholder="标签，用逗号分隔（如：哲学, 成长）" class="input-text">
             <div class="modal-actions">
                 <button class="cancel-btn" onclick="app.closeModal('addBookModal')">取消</button>
                 <button class="save-btn" onclick="app.addBook()">添加</button>
@@ -99,6 +100,7 @@
             <input type="text" id="newPodcastCreator" placeholder="创作者/主播" class="input-text">
             <input type="text" id="newPodcastUrl" placeholder="链接URL（可选）" class="input-text">
             <input type="text" id="newPodcastCover" placeholder="封面图片URL（可选）" class="input-text">
+            <input type="text" id="newPodcastTags" placeholder="标签，用逗号分隔（如：科技, 访谈）" class="input-text">
             <div class="modal-actions">
                 <button class="cancel-btn" onclick="app.closeModal('addPodcastModal')">取消</button>
                 <button class="save-btn" onclick="app.addPodcast()">添加</button>
@@ -111,6 +113,7 @@
         <div class="modal-content">
             <h3>写日记</h3>
             <input type="text" id="newDiaryTitle" placeholder="标题（可选，如：今天的感悟）" class="input-text">
+            <input type="text" id="newDiaryTags" placeholder="标签，用逗号分隔（如：生活, 心情）" class="input-text">
             <div class="modal-actions">
                 <button class="cancel-btn" onclick="app.closeModal('addDiaryModal')">取消</button>
                 <button class="save-btn" onclick="app.addDiary()">添加</button>

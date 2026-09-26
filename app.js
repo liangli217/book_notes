@@ -147,6 +147,16 @@ class ThoughtNotes {
     // ===== Supabase 数据操作 =====
 
     async loadData() {
+        // 先初始化空数据，避免加载失败时渲染崩溃
+        this.data = { books: [], podcasts: [], diaries: [] };
+        this.loadError = null;
+
+        // 优先从本地缓存恢复，避免网络波动时页面空白
+        const cached = localStorage.getItem('thoughtNotes_cache');
+        if (cached) {
+            try { this.data = JSON.parse(cached); } catch (e) { /* ignore */ }
+        }
+
         try {
             const { data: items, error } = await db.from('items').select('*').order('created_at', { ascending: false });
             if (error) throw error;
@@ -161,12 +171,7 @@ class ThoughtNotes {
                 notesByItem[n.item_id].push(n);
             });
 
-            this.data = {
-                books: [],
-                podcasts: [],
-                diaries: []
-            };
-
+            this.data = { books: [], podcasts: [], diaries: [] };
             items.forEach(item => {
                 const mapped = this.mapItem(item);
                 mapped.notes = notesByItem[item.id] || [];
@@ -178,9 +183,31 @@ class ThoughtNotes {
                     this.data.podcasts.push(mapped);
                 }
             });
+
+            // 成功加载后写入本地缓存
+            localStorage.setItem('thoughtNotes_cache', JSON.stringify(this.data));
         } catch (e) {
             console.error('加载数据失败:', e);
+            // 有缓存数据时不显示错误页，直接展示缓存内容
+            if (!cached) this.loadError = e;
         }
+    }
+
+    renderLoadError(grid) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;color:#868e96;margin-top:60px;">
+            <p style="font-size:18px;margin-bottom:10px;">⚠️ 数据加载失败</p>
+            <p style="font-size:14px;margin-bottom:20px;">可能是网络问题，请检查网络连接后重试</p>
+            <button class="btn-primary" onclick="app.retryLoad()">重新加载</button>
+        </div>`;
+    }
+
+    async retryLoad() {
+        await this.loadData();
+        this.renderCurrentTab();
+    }
+
+    saveCache() {
+        localStorage.setItem('thoughtNotes_cache', JSON.stringify(this.data));
     }
 
     // 将数据库行映射为前端对象
@@ -193,9 +220,35 @@ class ThoughtNotes {
             creator: row.author || '',
             url: row.url || '',
             cover: row.cover_url || '',
+            tags: row.tags || '',
             createdAt: row.created_at,
             notes: []
         };
+    }
+
+    parseTags(item) {
+        const tags = item.tags || '';
+        return tags.split(',').map(t => t.trim()).filter(t => t);
+    }
+
+    escapeHtml(text) {
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // 插入 item：若 tags 列不存在则自动降级重试，保证添加功能可用
+    async insertItem(payload) {
+        const { data, error } = await db.from('items').insert(payload).select().single();
+        if (!error) return { data, error: null };
+        const msg = (error.message || '').toLowerCase();
+        const isTagsMissing = ('tags' in payload) && (
+            (msg.includes('column') && (msg.includes('does not exist') || msg.includes('schema cache') || msg.includes('could not find'))) ||
+            msg.includes("'tags'")
+        );
+        if (isTagsMissing) {
+            const { tags, ...rest } = payload;
+            return db.from('items').insert(rest).select().single();
+        }
+        return { data, error };
     }
 
     bindEvents() {
@@ -239,17 +292,19 @@ class ThoughtNotes {
         const title = document.getElementById('newBookTitle').value.trim();
         const author = document.getElementById('newBookAuthor').value.trim();
         const cover = document.getElementById('newBookCover').value.trim();
+        const tags = document.getElementById('newBookTags').value.trim();
         if (!title) { alert('请输入书名'); return; }
 
         try {
-            const { data, error } = await db.from('items').insert({
-                type: 'book', title, author, cover_url: cover
-            }).select().single();
+            const { data, error } = await this.insertItem({
+                type: 'book', title, author, cover_url: cover, tags
+            });
             if (error) throw error;
 
             const newBook = this.mapItem(data);
             newBook.notes = [];
             this.data.books.unshift(newBook);
+            this.saveCache();
             this.closeModal('addBookModal');
             this.renderBooksPage();
         } catch (e) {
@@ -264,17 +319,19 @@ class ThoughtNotes {
         const creator = document.getElementById('newPodcastCreator').value.trim();
         const url = document.getElementById('newPodcastUrl').value.trim();
         const cover = document.getElementById('newPodcastCover').value.trim();
+        const tags = document.getElementById('newPodcastTags').value.trim();
         if (!title) { alert('请输入标题'); return; }
 
         try {
-            const { data, error } = await db.from('items').insert({
-                type, title, author: creator, cover_url: cover, url
-            }).select().single();
+            const { data, error } = await this.insertItem({
+                type, title, author: creator, cover_url: cover, url, tags
+            });
             if (error) throw error;
 
             const newPodcast = this.mapItem(data);
             newPodcast.notes = [];
             this.data.podcasts.unshift(newPodcast);
+            this.saveCache();
             this.closeModal('addPodcastModal');
             this.renderPodcastsPage();
         } catch (e) {
@@ -285,18 +342,26 @@ class ThoughtNotes {
 
     async addDiary() {
         const title = document.getElementById('newDiaryTitle').value.trim();
+        const tags = document.getElementById('newDiaryTags').value.trim();
         const dateStr = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
         try {
-            const { data, error } = await db.from('items').insert({
-                type: 'diary', title: title || dateStr
-            }).select().single();
+            const { data, error } = await this.insertItem({
+                type: 'diary', title: title || dateStr, tags
+            });
             if (error) throw error;
 
+            // 同时创建一条空 note 作为日记内容
+            const { data: note, error: noteError } = await db.from('notes').insert({
+                item_id: data.id, quote: '', reflection: '', timestamp: ''
+            }).select().single();
+            if (noteError) throw noteError;
+
             const newDiary = this.mapItem(data);
-            newDiary.notes = [];
+            newDiary.notes = [note];
             this.data.diaries.unshift(newDiary);
+            this.saveCache();
             this.closeModal('addDiaryModal');
-            this.renderDiariesPage();
+            this.goToNotesPage('diaries', data.id);
         } catch (e) {
             console.error('添加日记失败:', e);
             alert('添加失败: ' + e.message);
@@ -313,6 +378,7 @@ class ThoughtNotes {
             if (error) throw error;
 
             this.data[type] = this.data[type].filter(item => item.id !== itemId);
+            this.saveCache();
             this.renderCurrentTab();
         } catch (e) {
             console.error('删除失败:', e);
@@ -341,6 +407,7 @@ class ThoughtNotes {
 
     renderBooksPage() {
         const grid = document.getElementById('booksGrid');
+        if (this.loadError) { this.renderLoadError(grid); return; }
         if (this.data.books.length === 0) {
             grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;color:#868e96;margin-top:60px;"><p style="font-size:18px;margin-bottom:10px;">书架空空如也</p><p style="font-size:14px;">点击上方"添加新书"开始你的阅读之旅</p></div>`;
             return;
@@ -350,6 +417,7 @@ class ThoughtNotes {
 
     renderPodcastsPage() {
         const grid = document.getElementById('podcastsGrid');
+        if (this.loadError) { this.renderLoadError(grid); return; }
         if (this.data.podcasts.length === 0) {
             grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;color:#868e96;margin-top:60px;"><p style="font-size:18px;margin-bottom:10px;">暂无视频或播客</p><p style="font-size:14px;">点击上方"添加视频/播客"开始记录</p></div>`;
             return;
@@ -359,6 +427,7 @@ class ThoughtNotes {
 
     renderDiariesPage() {
         const grid = document.getElementById('diariesGrid');
+        if (this.loadError) { this.renderLoadError(grid); return; }
         if (this.data.diaries.length === 0) {
             grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;color:#868e96;margin-top:60px;"><p style="font-size:18px;margin-bottom:10px;">暂无日记</p><p style="font-size:14px;">点击上方"写日记"开始记录</p></div>`;
             return;
@@ -387,6 +456,7 @@ class ThoughtNotes {
                         <div class="item-title">${item.title}</div>
                         <div class="item-meta">${metaLabel || '未知'}</div>
                         ${typeLabel ? `<div class="item-type-badge">${typeLabel}</div>` : ''}
+                        ${this.parseTags(item).length > 0 ? `<div class="item-tags">${this.parseTags(item).map(tag => `<span class="item-tag">${this.escapeHtml(tag)}</span>`).join('')}</div>` : ''}
                     </div>
                     <div class="item-stats">${isDiary ? '' : item.notes.length + ' 条'}</div>
                 </div>
@@ -445,6 +515,7 @@ class ThoughtNotes {
             if (error) throw error;
 
             this.currentItem.notes.unshift(data);
+            this.saveCache();
             this.renderNotes();
         } catch (e) {
             console.error('添加笔记失败:', e);
@@ -469,18 +540,21 @@ class ThoughtNotes {
     updateTimestamp(noteId, timestamp) {
         const note = this.currentItem.notes.find(n => n.id === noteId);
         if (note) note.timestamp = timestamp;
+        this.saveCache();
         this.debouncedUpdate(noteId, 'timestamp', timestamp);
     }
 
     updateQuote(noteId, quoteText) {
         const note = this.currentItem.notes.find(n => n.id === noteId);
         if (note) note.quote = quoteText;
+        this.saveCache();
         this.debouncedUpdate(noteId, 'quote', quoteText);
     }
 
     updateReflection(noteId, reflectionText) {
         const note = this.currentItem.notes.find(n => n.id === noteId);
         if (note) note.reflection = reflectionText;
+        this.saveCache();
         this.debouncedUpdate(noteId, 'reflection', reflectionText);
     }
 
@@ -569,6 +643,7 @@ class ThoughtNotes {
             const { error } = await db.from('notes').delete().eq('id', noteId);
             if (error) throw error;
             this.currentItem.notes = this.currentItem.notes.filter(n => n.id !== noteId);
+            this.saveCache();
             this.renderNotes();
         } catch (e) {
             console.error('删除笔记失败:', e);
