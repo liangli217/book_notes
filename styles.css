@@ -697,6 +697,24 @@ select.input-text {
     color: var(--accent-color);
 }
 
+.add-reflection-btn {
+    margin-top: 16px;
+    padding: 8px 16px;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.add-reflection-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: white;
+}
+
 .note-card .note-footer {
     margin-top: 20px;
     display: flex;

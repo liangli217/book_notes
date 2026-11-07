@@ -12,6 +12,7 @@ class ThoughtNotes {
         this.isListening = false;
         this.currentListeningTarget = null;
         this.updateTimers = {};
+        this.openReflections = new Set();
         this.init();
     }
 
@@ -233,6 +234,13 @@ class ThoughtNotes {
 
     escapeHtml(text) {
         return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // 判断感悟编辑区是否已有实际文字内容（忽略只包含标签/空白的 HTML）
+    hasReflectionContent(html) {
+        if (!html) return false;
+        const text = String(html).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+        return text.length > 0;
     }
 
     // 插入 item：若 tags 列不存在则自动降级重试，保证添加功能可用
@@ -470,6 +478,7 @@ class ThoughtNotes {
     }
 
     goBackToList() {
+        this.openReflections.clear();
         document.querySelectorAll('.page[data-page]').forEach(page => {
             page.classList.toggle('active', page.dataset.page === this.currentTab);
         });
@@ -480,6 +489,7 @@ class ThoughtNotes {
     }
 
     goToNotesPage(type, itemId) {
+        this.openReflections.clear();
         const items = this.data[type];
         this.currentItem = items.find(item => item.id === itemId);
         this.currentType = type;
@@ -549,7 +559,7 @@ class ThoughtNotes {
                         <div class="note-item">
                             ${note.timestamp ? `<div class="note-timestamp">⏱️ ${note.timestamp}</div>` : ''}
                             ${isDiary ? `<div class="note-reflection">${this.getPreviewText(note.reflection, 80)}</div>` : `<div class="note-quote">${this.getPreviewText(note.quote, 50)}</div>
-                            ${note.reflection ? `<div class="note-reflection">${this.getPreviewText(note.reflection, 40)}</div>` : ''}`}
+                            ${this.hasReflectionContent(note.reflection) ? `<div class="note-reflection">${this.getPreviewText(note.reflection, 40)}</div>` : ''}`}
                         </div>
                     `).join('')}
                     ${item.notes.length > 3 ? `<div class="more-notes">还有 ${item.notes.length - 3} 条笔记...</div>` : ''}
@@ -652,7 +662,9 @@ class ThoughtNotes {
             return;
         }
 
-        notesList.innerHTML = this.currentItem.notes.map(note => `
+        notesList.innerHTML = this.currentItem.notes.map(note => {
+            const showReflection = isDiary || this.hasReflectionContent(note.reflection) || this.openReflections.has(note.id);
+            return `
             <div class="note-card">
                 ${isPodcast ? `
                 <div class="note-timestamp-row">
@@ -685,6 +697,7 @@ class ThoughtNotes {
                         </div>
                         <div id="quote-${note.id}" class="note-text quote-text" contenteditable="true" data-placeholder="在此输入${isPodcast ? '精彩片段内容' : '原文摘录'}..." oninput="app.updateQuote(${note.id}, this.innerHTML)">${note.quote || ''}</div>
                     </div>
+                    ${showReflection ? `
                     <div class="note-column">
                         <div class="note-column-header">
                             <div class="note-column-title">感悟</div>
@@ -695,13 +708,24 @@ class ThoughtNotes {
                         </div>
                         <div id="reflection-${note.id}" class="note-text reflection-text" contenteditable="true" data-placeholder="写下你的感悟..." oninput="app.updateReflection(${note.id}, this.innerHTML)">${note.reflection || ''}</div>
                     </div>
+                    ` : ''}
                 </div>
+                ${showReflection ? '' : `<button class="add-reflection-btn" onclick="app.openReflectionEditor(${note.id})">＋ 添加感悟</button>`}
                 `}
                 <div class="note-footer">
                     <button class="delete-btn" onclick="app.deleteNote(${note.id})">删除${isDiary ? '内容' : '笔记'}</button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
+    }
+
+    // 展开感悟编辑区（默认不显示，点击后出现）
+    openReflectionEditor(noteId) {
+        this.openReflections.add(noteId);
+        this.renderNotes();
+        const editor = document.getElementById(`reflection-${noteId}`);
+        if (editor) editor.focus();
     }
 
     formatBold(editorId) {
